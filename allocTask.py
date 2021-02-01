@@ -84,12 +84,12 @@ class task:
 		self.name = name
 		self.position = [position_x, position_y, position_z]
 		self.robotParameter = robotParameter
-        self.taskLength = taskLenght
+        self.taskLength = taskLength
     def _init_(self)
         self.name = 'not assigned'
         self.postion = [0,0,0]
         self.robotParameter = 0
-        self.taskLenght = 0
+        self.taskLength = 0
 
 def task_alloc(rank,taskToAlloc):
     #input: rank vector each crazyflie, task to allocate class object
