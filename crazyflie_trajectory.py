@@ -3,6 +3,9 @@
 from math import pi, sqrt, atan2, cos, sin
 import numpy as np
 
+import taskGenerator as taskg
+import allocTask as taskk
+
 import mav_msgs
 import tf
 import rospy
@@ -16,6 +19,13 @@ class Crazyflie():
     def __init__(self):
         rospy.init_node("crazyflie_go")
         rospy.loginfo("Press Ctrl + C to terminate")
+
+	taskg.init_task_generator()
+
+	self.start_drone_info()
+
+	self.start_assignment()
+
 
         # drone publisher
         drone_msg = DroneState()
@@ -50,7 +60,13 @@ class Crazyflie():
         self.odom_sub = rospy.Subscriber("crazyflie2/odometry", Odometry, self.odom_callback)
 
         try:
-            self.run()
+            self.run([self.midpoint([0,0,1],[2,0,1]),np.array([2,0,1])])
+	    
+	    #setup multithread running for each drone here
+	
+	    #task assignment and execution for one drone:
+	    #drone_one_go()
+	    #taskUpdateFunct()
         except rospy.ROSInterruptException:
             rospy.loginfo("Action terminated.")
         finally:
@@ -58,10 +74,77 @@ class Crazyflie():
             np.savetxt('trajectory.csv', np.array(self.trajectory), fmt='%f', delimiter=',')       
 
 
-    def run(self): 
-        waypoints = [[1, 0, 1], [2, 0, 1]] 
-        for i in range(len(waypoints)-1):
+    def taskUpdateFunct(self):
+	#input: none
+	#output: none	
+
+	#function generates and assigns new task to drone
+
+	while(1):
+	    for x in range(0,4):
+        	if(taskg.tasksAssigned[x].name == 'not assigned'):
+		    taskg.tasksAssigned[x] = taskg.new_task_generator()
+		    taskk.task_alloc(taskk.mrta_rank(taskg.tasksAssigned[x]),taskg.tasksAssigned[x])
+
+
+    def drone_one_go(self):
+	#input: none
+	#output: none	
+
+	#sends drone 1 to its next location whenever called, and updates information after reaching location
+
+	waypoint = [midpoint(crazyflieInfo[0].postion, crazyflieInfo[0].taskAssigned.postion), np.array(crazyflieInfo[0].taskAssigned.postion)]
+	run(waypoint)
+	
+	#need to wait until drone reaches location
+	crazyflieInfo[0].updatePostion()
+
+	#wait for drone to finish task (duration of task)
+
+	#unassigns the task from the tasksAssigned array and from the drone
+	for x in range(0,4):
+	    if(tasksAssigned[x].name == crazyflieInfo[0].taskAssigned.name):
+		tasksAssigned[x] = task()
+		crazyflieInfo[0].taskComplete()
+
+
+    def midpoint(self,currentLocation, finalLocation):
+	#input: currentLocation - the current location of the drone
+	#	finalLocation - the location for where the drone is being sent towards
+	#output: none	
+
+	#function generates the midpoint between current and final location
+
+	return np.abs(np.array([(currentLocation[0]-finalLocation[0])/2, (currentLocation[1]-finalLocation[1])/2, 1]))
+	    
+	    
+    def run(self, waypoints): 
+        #waypoints = [[1, 0, 1], [2, 0, 1]] 
+        for i in range(0,len(waypoints)-1):
             self.move_to_point(waypoints[i], waypoints[i+1])
+
+
+    def start_drone_info(self):
+	#input: none
+	#output: none	
+
+	#function assigns drones in crazyflieInfo with names
+
+	taskk.crazyflieInfo[0].assignName('drone 1')
+	taskk.crazyflieInfo[1].assignName('drone 2')
+	taskk.crazyflieInfo[2].assignName('drone 3')
+	taskk.crazyflieInfo[3].assignName('drone 4')
+	taskk.crazyflieInfo[4].assignName('drone 5')
+
+
+    def start_assignment(self):
+	#input: none
+	#output: none	
+
+	#assigns the tasks to drones for first five tasks at initialization
+
+	for x in range(0,4):
+	    taskk.task_alloc(taskk.mrta_rank(self,taskg.tasksAssigned[x]), taskg.tasksAssigned[x])
 
 
     def move_to_point(self, current_waypoint, next_waypoint): 
@@ -149,9 +232,11 @@ class Crazyflie():
             d2z = 2.0*az[5] + 6.0*az[4]*(i*t) + 12.0*az[3]*((i*t)**2) + 20.0*az[2]*((i*t)**3) + 30.0*az[1]*((i*t)**4) + 42.0*az[0]*((i*t)**5) 
             d2yaw = 2.0*ayaw[5] + 6.0*ayaw[4]*(i*t) + 12.0*ayaw[3]*((i*t)**2) + 20.0*ayaw[2]*((i*t)**3) + 30.0*ayaw[1]*((i*t)**4) + 42.0*ayaw[0]*((i*t)**5) #acceleration
             
+
             roll = atan2(y,z) #atan2(y, sqrt( (x*x) + (z*z)))
             pitch = atan2(x,z) #atan2(x, sqrt((y*y) + (z*z)))
             q = quaternion_from_euler(roll, pitch, yaw)
+
 
             print(' x value ', x)
             print(' y value ', y)
