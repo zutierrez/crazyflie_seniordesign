@@ -17,9 +17,11 @@ def mrta_rank(self,taskToRank):
     # assuming crazyflie_position is given as np.array(self.pose.x,self.pose.y,self.pose.z)
     
     #goes through and ranks drones based on certain characteristics of drones
-    for(x in range (0,4)):
+    #for x in range(0,4):
         #finds the distance of all drones to the task
-        #ranks distances based on the max possible distance
+        #ranks distances based on the max possible 
+        #dist[x]
+        dist = np.linalg.norm(taskToRank - ) 
         dist["dist{0}".format(x)] = np.linalg.norm(taskToRank.position - crazyflieInfo(x).position)
         rankDist["rankDist{0}".format(x)] = 1 - dist(x)/maxDistance
     

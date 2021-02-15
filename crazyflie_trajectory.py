@@ -19,49 +19,112 @@ class Crazyflie():
 
         # drone publisher
         drone_msg = DroneState()
-        self.drone_pub = rospy.Publisher("crazyflie2/drone_state", DroneState, queue_size=10)
+        #self.drone_pub = rospy.Publisher("crazyflie2/drone_state", DroneState, queue_size=10)
         self.rate = rospy.Rate(10) 
 
         # drone 1 publisher
-        #drone_msg = DroneState()
-        #self.drone_pub = rospy.Publisher("crazyflie2_1/drone_state", DroneState, queue_size=10)
+        drone_msg = DroneState()
+        self.drone_pub1 = rospy.Publisher("crazyflie2_1/drone_state", DroneState, queue_size=10)
 
         # drone 2 publisher
-        #drone_msg = DroneState()
-        #self.drone_pub = rospy.Publisher("crazyflie2_2/drone_state", DroneState, queue_size=10) 
+        drone_msg = DroneState()
+        self.drone_pub2 = rospy.Publisher("crazyflie2_2/drone_state", DroneState, queue_size=10) 
 
         # drone 3 publisher
-        #drone_msg = DroneState()
-        #self.drone_pub = rospy.Publisher("crazyflie2_3/drone_state", DroneState, queue_size=10)
+        drone_msg = DroneState()
+        self.drone_pub3 = rospy.Publisher("crazyflie2_3/drone_state", DroneState, queue_size=10)
        
         # drone 4 publisher
-        #drone_msg = DroneState()
-        #self.drone_pub = rospy.Publisher("crazyflie2_4/drone_state", DroneState, queue_size=10) 
+        drone_msg = DroneState()
+        self.drone_pub4 = rospy.Publisher("crazyflie2_4/drone_state", DroneState, queue_size=10) 
         
         # drone 5 publisher
-        #drone_msg = DroneState()
-        #self.drone_pub = rospy.Publisher("crazyflie2_5/drone_state", DroneState, queue_size=10)
+        drone_msg = DroneState()
+        self.drone_pub5 = rospy.Publisher("crazyflie2_5/drone_state", DroneState, queue_size=10)
         
 
         # subscribe to odometry
-        self.pose = Point()
-        self.logging_counter = 0 # logging for observing trajectory 
-        self.trajectory = list()
-        self.odom_sub = rospy.Subscriber("crazyflie2/odometry", Odometry, self.odom_callback)
+        #self.pose = Point()
+        #self.odom_sub = rospy.Subscriber("crazyflie2/odometry", Odometry, self.odom_callback)
 
+        self.pose1 = Point() #[x,y,z]
+        self.odom_sub1 = rospy.Subscriber("crazyflie2_1/odometry", Odometry, self.odom_callback1)
+
+        self.pose2 = Point()
+        self.odom_sub2 = rospy.Subscriber("crazyflie2_2/odometry", Odometry, self.odom_callback2)
+
+        self.pose3 = Point()
+        self.odom_sub3 = rospy.Subscriber("crazyflie2_3/odometry", Odometry, self.odom_callback3)
+
+        self.pose4 = Point()
+        self.odom_sub4 = rospy.Subscriber("crazyflie2_4/odometry", Odometry, self.odom_callback4)
+
+        self.pose5 = Point()
+        self.odom_sub5 = rospy.Subscriber("crazyflie2_5/odometry", Odometry, self.odom_callback5)
+
+
+        # ------------------------- insert task allocation + ranking -------------------
+        # allocTask(): determines who wins the auction 
+        # assigns a task to a drone info 
+
+        # crazyflie2_1.task = [2,1,3]
+        task1 = [[0, 0.5, 1], [0, 1, 2]]
+        task2 = [[0, 0, 0],[0, 0, 0]]
+        task3 = [[0, 0.5, 1],[0, 0.5, 1]]
+        task4 = [[1, 2, 1],[1, 2, 1]]
+        task5 = [[-0.5, -1, 1],[-1, -2, 1]]
+
+        ## multi threading here:
+        
+        #--------------------------------------------------------------------------------
+        
         try:
-            self.run()
+            self.run(task1)
         except rospy.ROSInterruptException:
             rospy.loginfo("Action terminated.")
         finally:
-            # save trajectory into csv file
-            np.savetxt('trajectory.csv', np.array(self.trajectory), fmt='%f', delimiter=',')       
+           pass
 
-
-    def run(self): 
-        waypoints = [[1, 0, 1], [2, 0, 1]] 
+    def run(self, waypoints): 
+        drone_msg = DroneState()
         for i in range(len(waypoints)-1):
             self.move_to_point(waypoints[i], waypoints[i+1])
+
+        pose = np.array([self.pose1.x, self.pose1.y, self.pose1.z]) # must change this later for multiple drones
+        goal = np.array(waypoints[-1])
+        print(pose)
+        print(goal)
+        
+        squared_dist = np.sum((pose-waypoints[-1])**2, axis = 0)
+        dist = sqrt(squared_dist)
+        print(dist)
+        if dist <= 4:
+            print("Publishing zeros to controller now .... ")
+            roll = 0
+            pitch = 0
+            yaw = 0
+            q = quaternion_from_euler(roll, pitch, yaw)
+            drone_msg.position.x = 0
+            drone_msg.position.y = 0
+            drone_msg.position.z = 0
+            drone_msg.linear_velocity.x = 0
+            drone_msg.linear_velocity.y = 0
+            drone_msg.linear_velocity.z = 0
+            drone_msg.linear_acceleration.x = 0
+            drone_msg.linear_acceleration.y = 0
+            drone_msg.linear_acceleration.z = 0
+            drone_msg.orientation.x = 0
+            drone_msg.orientation.y = 0
+            drone_msg.orientation.z = 0
+            drone_msg.orientation.w = 0
+            drone_msg.angular_velocity.x = roll 
+            drone_msg.angular_velocity.y = pitch
+            drone_msg.angular_velocity.z = 0
+            drone_msg.angular_acceleration.x = roll
+            drone_msg.angular_acceleration.y = pitch
+            drone_msg.angular_acceleration.z = 0
+            self.drone_pub.publish(drone_msg)
+            self.rate.sleep()
 
 
     def move_to_point(self, current_waypoint, next_waypoint): 
@@ -70,7 +133,7 @@ class Crazyflie():
         drone_msg = DroneState()
         T = 2
 
-        # x trajectory conditions ------------------------
+        # x boundary conditions 
         xp_start = current_waypoint[0] # positon (inital)
         xp_end = next_waypoint[0]      # position (next)
         xv_start = 0                   # velocity (inital)
@@ -80,7 +143,7 @@ class Crazyflie():
         xj_start = 0                   # jerk (inital)
         xj_end = xj_start              # jerk (next)
 
-        # y trajectory conditions -------------------------
+        # y boundary conditions
         yp_start = current_waypoint[1]
         yp_end = next_waypoint[1]
         yv_start = 0
@@ -90,17 +153,17 @@ class Crazyflie():
         yj_start = 0
         yj_end = yj_start
 
-        # z trajectory conditions --------------------------
+        # z boundary conditions 
         zp_start = current_waypoint[2]
         zp_end = next_waypoint[2]
-        zv_start = 0
-        zv_end = 0
+        zv_start = 0.4
+        zv_end = 0.4
         za_start = 0
         za_end = za_start
         zj_start = 0
         zj_end = zj_start
 
-        # yaw trajectory conditions ------------------------
+        # yaw boundary conditions
         yawp_start = 0
         yawv_start = 0
         yawp_end = 0
@@ -119,21 +182,7 @@ class Crazyflie():
         #publish parameters:
         t = 1/10
         for i in range(T*10):
-            #x = 1.0*ax[3] + 1.0*ax[2]*(i*t) + 1.0*ax[1]*((i*t)**2) + 1.0*ax[0]*((i*t)**3)
-            #y = 1.0*ax[3] + 1.0*ay[2]*(i*t) + 1.0*ay[1]*((i*t)**2) + 1.0*ay[0]*((i*t)**3)
-            #z = 1.0*ax[3] + 1.0*az[2]*(i*t) + 1.0*az[1]*((i*t)**2) + 1.0*az[0]*((i*t)**3)
-            #yaw = 1.0*ayaw[3] + 1.0*ayaw[2]*(i*t) + 1.0*ayaw[1]*((i*t)**2) + 1.0*ayaw[0]*((i*t)**3)
-
-            #dx = 1.0*ax[2] + 2.0*ax[1]*(i*t) + 3.0*ax[0]*((i*t)**2)
-            #dy = 1.0*ay[2] + 2.0*ay[1]*(i*t) + 3.0*ay[0]*((i*t)**2)
-            #dz = 1.0*az[2] + 2.0*az[1]*(i*t) + 3.0*az[0]*((i*t)**2)
-            #dyaw = 1.0*ayaw[2] + 2.0*ayaw[1]*(i*t) + 3.0*ayaw[0]*((i*t)**2)
-
-            #d2x = 2.0*ax[1] + 6.0*ax[0]*(i*t)
-            #d2y = 2.0*ay[1] + 6.0*ay[0]*(i*t)
-            #d2z = 2.0*az[1] + 6.0*az[0]*(i*t)
-            #d2yaw = 2.0*ayaw[1] + 6.0*ayaw[0]*(i*t)
-
+            
             x = ax[7] + ax[6]*(i*t) + ax[5]*((i*t)**2) + ax[4]*((i*t)**3) + ax[3]*((i*t)**4) + ax[2]*((i*t)**5) + ax[1]*((i*t)**6) + ax[0]*((i*t)**7)       
             y = ay[7] + ay[6]*(i*t) + ay[5]*((i*t)**2) + ay[4]*((i*t)**3) + ay[3]*((i*t)**4) + ay[2]*((i*t)**5) + ay[1]*((i*t)**6) + ay[0]*((i*t)**7)      
             z = az[7] + az[6]*(i*t) + az[5]*((i*t)**2) + az[4]*((i*t)**3) + az[3]*((i*t)**4) + az[2]*((i*t)**5) + az[1]*((i*t)**6) + az[0]*((i*t)**7)
@@ -149,8 +198,8 @@ class Crazyflie():
             d2z = 2.0*az[5] + 6.0*az[4]*(i*t) + 12.0*az[3]*((i*t)**2) + 20.0*az[2]*((i*t)**3) + 30.0*az[1]*((i*t)**4) + 42.0*az[0]*((i*t)**5) 
             d2yaw = 2.0*ayaw[5] + 6.0*ayaw[4]*(i*t) + 12.0*ayaw[3]*((i*t)**2) + 20.0*ayaw[2]*((i*t)**3) + 30.0*ayaw[1]*((i*t)**4) + 42.0*ayaw[0]*((i*t)**5) #acceleration
             
-            roll = atan2(y,z) #atan2(y, sqrt( (x*x) + (z*z)))
-            pitch = atan2(x,z) #atan2(x, sqrt((y*y) + (z*z)))
+            roll = atan2(-y, sqrt( (x*x) + (z*z) ) ) #atan2(y,z) 
+            pitch = atan2(x, sqrt( (y*y) + (z*z) ) ) #atan2(x,z) 
             q = quaternion_from_euler(roll, pitch, yaw)
 
             print(' x value ', x)
@@ -186,7 +235,7 @@ class Crazyflie():
             drone_msg.angular_acceleration.x = roll
             drone_msg.angular_acceleration.y = pitch
             drone_msg.angular_acceleration.z = d2yaw
-            self.drone_pub.publish(drone_msg)
+            self.drone_pub1.publish(drone_msg)
             self.rate.sleep()
 
 
@@ -194,8 +243,6 @@ class Crazyflie():
         # input: p,v,a,j: position, velocity, acceleration and jerk of start/end point
         #        T: the desired time to complete this segment of trajectory (in second)
         # output: the coefficients of this polynomial
-        
-        #A = np.array([[0,0,0,1], [T**3, T**2, T, 1], [0,0,1,0], [3*T**2, 2*T, 1, 0]])
         
         A = np.array([[   0,  0,  0,  0,  0,  0,  0,  1], \
                       [T**7, T**6, T**5, T**4, T**3, T**2, T, 1], \
@@ -207,29 +254,116 @@ class Crazyflie():
                       [210*(T**4), 120*(T**3), 60*(T**2), 24*T, 6, 0, 0, 0]])
 
         A_inv = np.linalg.inv(A)
-        #boundaryCond = np.array([p_start, p_end, v_start, v_end])
         boundaryCond = np.array([p_start, p_end, v_start, v_end, a_start, a_end, j_start, j_end])
         coefficients = np.dot(A_inv,boundaryCond)
         
         return coefficients
 
+    def mrta_rank(self,taskToRank):
+        pass
+    # input: position of task class object, position of 5 crazyflies
+    # output: rank [rank1, rank2, rank3, rank4, rank5]
+    
+    # assuming task_position is given as np.array(x,y,z)
+    # assuming crazyflie_position is given as np.array(self.pose.x,self.pose.y,self.pose.z)
+    
+    #goes through and ranks drones based on certain characteristics of drones
+    #for x in range(0,4):
+        #finds the distance of all drones to the task
+        #ranks distances based on the max possible 
+        #dist[x]
+        
+       #boundaryLength = 10 #The size of the sides of the area for the tasks
+        #maxDistance = sqrt(2*boundaryLength*boundaryLength) #max possible distance away a drone could be
 
-    def odom_callback(self, msg): 
+        #dist = np.linalg.norm(taskToRank - self.pose) 
+        #dist["dist{0}".format(x)] = np.linalg.norm(taskToRank.position - crazyflieInfo(x).position)
+       # distRank = 1 - (dist/maxDistance)
+        #rankDist["rankDist{0}".format(x)] = 1 - dist(x)/maxDistance
+    
+        #higher rank for task if parameters match for the task
+        #if(taskToRank.robotParameter == crazyflieInfo(x).robotParameter)
+            #rankParam["rankParam{0}.format(x)] = 1
+        #else
+            #rankParam["rankParam{0}.format(x)] = 0.5
+        
+        #higher rank for task if not doing anything
+        #if(crazyflieInfo(x).taskAssigned == 'no task')
+            #rankDoingNothing["rankDoingNothing{0}.format(x)] = 1
+        #else    
+            #rankDoingNothing["rankDoingNothing{0}.format(x)] = 0
+            
+        #numRankingFactors = 3
+    
+        #inverts the values so low numbers mean higher ranking
+    #overallRank0 = numRankingFactors - rankDist0 + rankParam0 + rankDoingNothing0
+    #overallRank1 = numRankingFactors - rankDist1 + rankParam1 + rankDoingNothing1
+    #overallRank2 = numRankingFactors - rankDist2 + rankParam2 + rankDoingNothing2
+    #overallRank3 = numRankingFactors - rankDist3 + rankParam3 + rankDoingNothing3
+    #overallRank4 = numRankingFactors - rankDist4 + rankParam4 + rankDoingNothing4
+    
+
+    # also can consider the crazyflie's specific reward associated with the task
+    # reward_vector = [reward1, .... rewardn] (0 - 1)
+    #pre_rank = reward*dist #element-wise multiplication
+    
+    # https://docs.scipy.org/doc/numpy-1.14.0/reference/generated/numpy.sort.html
+    #dtype = [('drone','S10'), ('distance', float),('rankValue',float)]
+    #drones = [('alpha', dist0, overallRank0) ('beta',dist1, overallRank1), ('charlie',dist2, overallRank2), ('delta',dist3, overallRank3), ('echo',dis4, overallRank4)]
+    #pre_ranked = np.array(drones, dtype=dtype)
+    
+    #rank = np.sort(pre_ranked, order='rankValue')
+        #rank = 0
+	    
+
+    def odom_callback1(self, msg): 
         # get pose = (x, y, theta) from odometry topic
         quarternion = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y,\
                     msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
         (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(quarternion)
-        self.pose.x = msg.pose.pose.position.x
-        self.pose.y = msg.pose.pose.position.y
-        self.pose.z = msg.pose.pose.position.z
+        self.pose1.x = msg.pose.pose.position.x
+        self.pose1.y = msg.pose.pose.position.y
+        self.pose1.z = msg.pose.pose.position.z
 
-        # logging once every 100 times (Gazebo runs at 1000Hz; we save it at 10Hz)
-        self.logging_counter += 1
-        if self.logging_counter == 100:
-            self.logging_counter = 0
-            self.trajectory.append([self.pose.x, self.pose.y])  # save trajectory
-            rospy.loginfo("odom: x=" + str(self.pose.x) +\
-                ";  y=" + str(self.pose.y) + ";  theta=" + str(yaw))
+
+    def odom_callback2(self, msg): 
+        # get pose = (x, y, theta) from odometry topic
+        quarternion = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y,\
+                    msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
+        (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(quarternion)
+        self.pose2.x = msg.pose.pose.position.x
+        self.pose2.y = msg.pose.pose.position.y
+        self.pose2.z = msg.pose.pose.position.z
+
+
+    def odom_callback3(self, msg): 
+        # get pose = (x, y, theta) from odometry topic
+        quarternion = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y,\
+                    msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
+        (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(quarternion)
+        self.pose3.x = msg.pose.pose.position.x
+        self.pose3.y = msg.pose.pose.position.y
+        self.pose3.z = msg.pose.pose.position.z
+
+
+    def odom_callback4(self, msg): 
+        # get pose = (x, y, theta) from odometry topic
+        quarternion = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y,\
+                    msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
+        (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(quarternion)
+        self.pose4.x = msg.pose.pose.position.x
+        self.pose4.y = msg.pose.pose.position.y
+        self.pose4.z = msg.pose.pose.position.z
+
+
+    def odom_callback5(self, msg): 
+        # get pose = (x, y, theta) from odometry topic
+        quarternion = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y,\
+                    msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
+        (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(quarternion)
+        self.pose5.x = msg.pose.pose.position.x
+        self.pose5.y = msg.pose.pose.position.y
+        self.pose5.z = msg.pose.pose.position.z
 
 
 if __name__ == '__main__':
