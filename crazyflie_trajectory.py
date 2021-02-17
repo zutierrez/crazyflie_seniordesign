@@ -241,7 +241,6 @@ class Crazyflie():
         #output: none	
 
         #sends drone 1 to its next location whenever called, and updates information after reaching location
-
         waypoint = [self.midpoint(taskk.crazyflieInfo[4].position, taskk.crazyflieInfo[4].taskAssigned.position), np.array(taskk.crazyflieInfo[4].taskAssigned.position)]
         self.run5(waypoint)
         
@@ -307,8 +306,8 @@ class Crazyflie():
 
 
     def run1(self, waypoints): 
-        print("drone 1 waypoint:")	
-        print(waypoints)
+        #print("drone 1 waypoint:")	
+        #print(waypoints)
         drone_msg = DroneState()
         for i in range(len(waypoints)-1):
             self.move_to_point1(waypoints[i], waypoints[i+1])
@@ -327,7 +326,6 @@ class Crazyflie():
         drone_msg = DroneState()
         for i in range(len(waypoints)-1):
             self.move_to_point4(waypoints[i], waypoints[i+1])
-
 
     def run5(self, waypoints): 
         drone_msg = DroneState()
@@ -461,6 +459,8 @@ class Crazyflie():
             drone_msg.orientation.y = q[1]
             drone_msg.orientation.z = q[2]
             drone_msg.orientation.w = q[3]
+<<<<<<< HEAD
+=======
             drone_msg.angular_velocity.x = roll 
             drone_msg.angular_velocity.y = pitch
             drone_msg.angular_velocity.z = dyaw
@@ -483,6 +483,114 @@ class Crazyflie():
         xa_end = xa_start              # acceleration (next)
         xj_start = 0                   # jerk (inital)
         xj_end = xj_start              # jerk (next)
+
+        # y boundary conditions
+        yp_start = current_waypoint[1]
+        yp_end = next_waypoint[1]
+        yv_start = 0
+        yv_end = 0
+        ya_start = 0
+        ya_end = ya_start
+        yj_start = 0
+        yj_end = yj_start
+
+        # z boundary conditions 
+        zp_start = current_waypoint[2]
+        zp_end = next_waypoint[2]
+        zv_start = 0.4
+        zv_end = 0.4
+        za_start = 0
+        za_end = za_start
+        zj_start = 0
+        zj_end = zj_start
+
+        # yaw boundary conditions
+        yawp_start = 0
+        yawv_start = 0
+        yawp_end = 0
+        yawv_end = 0
+        yawa_start = 0
+        yawa_end = 0
+        yawj_start = 0
+        yawj_end = 0
+
+        #compute parameters: 19 parameters, must be published 
+        ax = self.polynomial_time_scaling_7th_order(xp_start, xp_end, xv_start, xv_end, xa_start, xa_end, xj_start, xj_end, T)
+        ay = self.polynomial_time_scaling_7th_order(yp_start, yp_end, yv_start, yv_end, ya_start, ya_end, yj_start, yj_end, T)
+        az = self.polynomial_time_scaling_7th_order(zp_start, zp_end, zv_start, zv_end, za_start, za_end, zj_start, zj_end, T)
+        ayaw = self.polynomial_time_scaling_7th_order(yawp_start, yawp_end, yawv_start, yawv_end, yawa_start, yawa_end, yawj_start, yawj_end, T)
+
+        #publish parameters:
+        t = 1/10
+        for i in range(T*10):
+            
+            x = ax[7] + ax[6]*(i*t) + ax[5]*((i*t)**2) + ax[4]*((i*t)**3) + ax[3]*((i*t)**4) + ax[2]*((i*t)**5) + ax[1]*((i*t)**6) + ax[0]*((i*t)**7)       
+            y = ay[7] + ay[6]*(i*t) + ay[5]*((i*t)**2) + ay[4]*((i*t)**3) + ay[3]*((i*t)**4) + ay[2]*((i*t)**5) + ay[1]*((i*t)**6) + ay[0]*((i*t)**7)      
+            z = az[7] + az[6]*(i*t) + az[5]*((i*t)**2) + az[4]*((i*t)**3) + az[3]*((i*t)**4) + az[2]*((i*t)**5) + az[1]*((i*t)**6) + az[0]*((i*t)**7)
+            yaw = ayaw[7] + ayaw[6]*(i*t) + ayaw[5]*((i*t)**2) + ayaw[4]*((i*t)**3) + ayaw[3]*((i*t)**4) + ayaw[2]*((i*t)**5) + ayaw[1]*((i*t)**6) + ayaw[0]*((i*t)**7) #position 
+            
+            dx = ax[6] + 2.0*ax[5]*(i*t) + 3.0*ax[4]*((i*t)**2) + 4.0*ax[3]*((i*t)**3) + 5.0*ax[2]*((i*t)**4) + 6.0*ax[1]*((i*t)**5) + 7.0*ax[0]*((i*t)**6)
+            dy = ay[6] + 2.0*ay[5]*(i*t) + 3.0*ay[4]*((i*t)**2) + 4.0*ay[3]*((i*t)**3) + 5.0*ay[2]*((i*t)**4) + 6.0*ay[1]*((i*t)**5) + 7.0*ay[0]*((i*t)**6)
+            dz = az[6] + 2.0*az[5]*(i*t) + 3.0*az[4]*((i*t)**2) + 4.0*az[3]*((i*t)**3) + 5.0*az[2]*((i*t)**4) + 6.0*az[1]*((i*t)**5) + 7.0*az[0]*((i*t)**6)
+            dyaw = ayaw[6] + 2.0*ayaw[5]*(i*t) + 3.0*ayaw[4]*((i*t)**2) + 4.0*ayaw[3]*((i*t)**3) + 5.0*ayaw[2]*((i*t)**4) + 6.0*ayaw[1]*((i*t)**5) + 7.0*ayaw[0]*((i*t)**6) #velocity 
+            
+            d2x = 2.0*ax[5] + 6.0*ax[4]*(i*t) + 12.0*ax[3]*((i*t)**2) + 20.0*ax[2]*((i*t)**3) + 30.0*ax[1]*((i*t)**4) + 42.0*ax[0]*((i*t)**5) 
+            d2y = 2.0*ay[5] + 6.0*ay[4]*(i*t) + 12.0*ay[3]*((i*t)**2) + 20.0*ay[2]*((i*t)**3) + 30.0*ay[1]*((i*t)**4) + 42.0*ay[0]*((i*t)**5)    
+            d2z = 2.0*az[5] + 6.0*az[4]*(i*t) + 12.0*az[3]*((i*t)**2) + 20.0*az[2]*((i*t)**3) + 30.0*az[1]*((i*t)**4) + 42.0*az[0]*((i*t)**5) 
+            d2yaw = 2.0*ayaw[5] + 6.0*ayaw[4]*(i*t) + 12.0*ayaw[3]*((i*t)**2) + 20.0*ayaw[2]*((i*t)**3) + 30.0*ayaw[1]*((i*t)**4) + 42.0*ayaw[0]*((i*t)**5) #acceleration
+            
+            roll = atan2(-y, sqrt( (x*x) + (z*z) ) ) #atan2(y,z) 
+            pitch = atan2(x, sqrt( (y*y) + (z*z) ) ) #atan2(x,z) 
+            q = quaternion_from_euler(roll, pitch, yaw)
+           
+            # 19 commands: drone_msg --> position (x,y,z), linear_velocity (x,y,z), linear_acceleration(x,y,z)
+            # orientation(x,y,z,w), angular_velocity(x,y,z), angular_acceleration(x,y,z)
+            drone_msg.position.x = x
+            drone_msg.position.y = y
+            drone_msg.position.z = z
+            drone_msg.linear_velocity.x = dx
+            drone_msg.linear_velocity.y = dy
+            drone_msg.linear_velocity.z = dz
+            drone_msg.linear_acceleration.x = d2x
+            drone_msg.linear_acceleration.y = d2y
+            drone_msg.linear_acceleration.z = d2z
+            drone_msg.orientation.x = q[0]
+            drone_msg.orientation.y = q[1]
+            drone_msg.orientation.z = q[2]
+            drone_msg.orientation.w = q[3]
+>>>>>>> 4c6ff36d26927ced76b4618cba89eee1c058da8c
+            drone_msg.angular_velocity.x = roll 
+            drone_msg.angular_velocity.y = pitch
+            drone_msg.angular_velocity.z = dyaw
+            drone_msg.angular_acceleration.x = roll
+            drone_msg.angular_acceleration.y = pitch
+            drone_msg.angular_acceleration.z = d2yaw
+<<<<<<< HEAD
+            self.drone_pub1.publish(drone_msg)
+            self.rate.sleep()
+
+    def move_to_point2(self, current_waypoint, next_waypoint): 
+=======
+            self.drone_pub2.publish(drone_msg) # drone_pub2 publisher for crazyflie2_2
+            self.rate.sleep()
+
+    def move_to_point3(self, current_waypoint, next_waypoint): 
+        # generate polynomial trajectory and move to current_waypoint
+        # next_waypoint is to help determine the velocity to pass current_waypoint
+>>>>>>> 4c6ff36d26927ced76b4618cba89eee1c058da8c
+        drone_msg = DroneState()
+        T = 2
+
+        # x boundary conditions 
+        xp_start = current_waypoint[0] # positon (inital)
+        xp_end = next_waypoint[0]      # position (next)
+        xv_start = 0                   # velocity (inital)
+        xv_end = 0                     # velocity (next)
+        xa_start = 0                   # acceleration (inital)
+        xa_end = xa_start              # acceleration (next)
+        xj_start = 0                   # jerk (inital)
+        xj_end = xj_start              # jerk (next)
+<<<<<<< HEAD
 
         # y boundary conditions
         yp_start = current_waypoint[1]
@@ -613,6 +721,39 @@ class Crazyflie():
         yawj_start = 0
         yawj_end = 0
 
+=======
+
+        # y boundary conditions
+        yp_start = current_waypoint[1]
+        yp_end = next_waypoint[1]
+        yv_start = 0
+        yv_end = 0
+        ya_start = 0
+        ya_end = ya_start
+        yj_start = 0
+        yj_end = yj_start
+
+        # z boundary conditions 
+        zp_start = current_waypoint[2]
+        zp_end = next_waypoint[2]
+        zv_start = 0.4
+        zv_end = 0.4
+        za_start = 0
+        za_end = za_start
+        zj_start = 0
+        zj_end = zj_start
+
+        # yaw boundary conditions
+        yawp_start = 0
+        yawv_start = 0
+        yawp_end = 0
+        yawv_end = 0
+        yawa_start = 0
+        yawa_end = 0
+        yawj_start = 0
+        yawj_end = 0
+
+>>>>>>> 4c6ff36d26927ced76b4618cba89eee1c058da8c
         #compute parameters: 19 parameters, must be published 
         ax = self.polynomial_time_scaling_7th_order(xp_start, xp_end, xv_start, xv_end, xa_start, xa_end, xj_start, xj_end, T)
         ay = self.polynomial_time_scaling_7th_order(yp_start, yp_end, yv_start, yv_end, ya_start, ya_end, yj_start, yj_end, T)
@@ -790,6 +931,7 @@ class Crazyflie():
         ya_end = ya_start
         yj_start = 0
         yj_end = yj_start
+<<<<<<< HEAD
 
         # z boundary conditions 
         zp_start = current_waypoint[2]
@@ -801,6 +943,19 @@ class Crazyflie():
         zj_start = 0
         zj_end = zj_start
 
+=======
+
+        # z boundary conditions 
+        zp_start = current_waypoint[2]
+        zp_end = next_waypoint[2]
+        zv_start = 0.4
+        zv_end = 0.4
+        za_start = 0
+        za_end = za_start
+        zj_start = 0
+        zj_end = zj_start
+
+>>>>>>> 4c6ff36d26927ced76b4618cba89eee1c058da8c
         # yaw boundary conditions
         yawp_start = 0
         yawv_start = 0
@@ -820,6 +975,7 @@ class Crazyflie():
         #publish parameters:
         t = 1/10
         for i in range(T*10):
+<<<<<<< HEAD
             
             x = ax[7] + ax[6]*(i*t) + ax[5]*((i*t)**2) + ax[4]*((i*t)**3) + ax[3]*((i*t)**4) + ax[2]*((i*t)**5) + ax[1]*((i*t)**6) + ax[0]*((i*t)**7)       
             y = ay[7] + ay[6]*(i*t) + ay[5]*((i*t)**2) + ay[4]*((i*t)**3) + ay[3]*((i*t)**4) + ay[2]*((i*t)**5) + ay[1]*((i*t)**6) + ay[0]*((i*t)**7)      
@@ -836,6 +992,24 @@ class Crazyflie():
             d2z = 2.0*az[5] + 6.0*az[4]*(i*t) + 12.0*az[3]*((i*t)**2) + 20.0*az[2]*((i*t)**3) + 30.0*az[1]*((i*t)**4) + 42.0*az[0]*((i*t)**5) 
             d2yaw = 2.0*ayaw[5] + 6.0*ayaw[4]*(i*t) + 12.0*ayaw[3]*((i*t)**2) + 20.0*ayaw[2]*((i*t)**3) + 30.0*ayaw[1]*((i*t)**4) + 42.0*ayaw[0]*((i*t)**5) #acceleration
             
+=======
+            
+            x = ax[7] + ax[6]*(i*t) + ax[5]*((i*t)**2) + ax[4]*((i*t)**3) + ax[3]*((i*t)**4) + ax[2]*((i*t)**5) + ax[1]*((i*t)**6) + ax[0]*((i*t)**7)       
+            y = ay[7] + ay[6]*(i*t) + ay[5]*((i*t)**2) + ay[4]*((i*t)**3) + ay[3]*((i*t)**4) + ay[2]*((i*t)**5) + ay[1]*((i*t)**6) + ay[0]*((i*t)**7)      
+            z = az[7] + az[6]*(i*t) + az[5]*((i*t)**2) + az[4]*((i*t)**3) + az[3]*((i*t)**4) + az[2]*((i*t)**5) + az[1]*((i*t)**6) + az[0]*((i*t)**7)
+            yaw = ayaw[7] + ayaw[6]*(i*t) + ayaw[5]*((i*t)**2) + ayaw[4]*((i*t)**3) + ayaw[3]*((i*t)**4) + ayaw[2]*((i*t)**5) + ayaw[1]*((i*t)**6) + ayaw[0]*((i*t)**7) #position 
+            
+            dx = ax[6] + 2.0*ax[5]*(i*t) + 3.0*ax[4]*((i*t)**2) + 4.0*ax[3]*((i*t)**3) + 5.0*ax[2]*((i*t)**4) + 6.0*ax[1]*((i*t)**5) + 7.0*ax[0]*((i*t)**6)
+            dy = ay[6] + 2.0*ay[5]*(i*t) + 3.0*ay[4]*((i*t)**2) + 4.0*ay[3]*((i*t)**3) + 5.0*ay[2]*((i*t)**4) + 6.0*ay[1]*((i*t)**5) + 7.0*ay[0]*((i*t)**6)
+            dz = az[6] + 2.0*az[5]*(i*t) + 3.0*az[4]*((i*t)**2) + 4.0*az[3]*((i*t)**3) + 5.0*az[2]*((i*t)**4) + 6.0*az[1]*((i*t)**5) + 7.0*az[0]*((i*t)**6)
+            dyaw = ayaw[6] + 2.0*ayaw[5]*(i*t) + 3.0*ayaw[4]*((i*t)**2) + 4.0*ayaw[3]*((i*t)**3) + 5.0*ayaw[2]*((i*t)**4) + 6.0*ayaw[1]*((i*t)**5) + 7.0*ayaw[0]*((i*t)**6) #velocity 
+            
+            d2x = 2.0*ax[5] + 6.0*ax[4]*(i*t) + 12.0*ax[3]*((i*t)**2) + 20.0*ax[2]*((i*t)**3) + 30.0*ax[1]*((i*t)**4) + 42.0*ax[0]*((i*t)**5) 
+            d2y = 2.0*ay[5] + 6.0*ay[4]*(i*t) + 12.0*ay[3]*((i*t)**2) + 20.0*ay[2]*((i*t)**3) + 30.0*ay[1]*((i*t)**4) + 42.0*ay[0]*((i*t)**5)    
+            d2z = 2.0*az[5] + 6.0*az[4]*(i*t) + 12.0*az[3]*((i*t)**2) + 20.0*az[2]*((i*t)**3) + 30.0*az[1]*((i*t)**4) + 42.0*az[0]*((i*t)**5) 
+            d2yaw = 2.0*ayaw[5] + 6.0*ayaw[4]*(i*t) + 12.0*ayaw[3]*((i*t)**2) + 20.0*ayaw[2]*((i*t)**3) + 30.0*ayaw[1]*((i*t)**4) + 42.0*ayaw[0]*((i*t)**5) #acceleration
+            
+>>>>>>> 4c6ff36d26927ced76b4618cba89eee1c058da8c
             roll = atan2(-y, sqrt( (x*x) + (z*z) ) ) #atan2(y,z) 
             pitch = atan2(x, sqrt( (y*y) + (z*z) ) ) #atan2(x,z) 
             q = quaternion_from_euler(roll, pitch, yaw)
