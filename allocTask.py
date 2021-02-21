@@ -1,14 +1,11 @@
 import numpy as np
 from math import pi, cos, sin, atan, atan2, sqrt, acos
 
-#Topic: crazyflie2_n/Odometry
-#nav_msgs/Odometry.msg
-
 class robotInfo:
     def __init__(self, name = '', position_x = 0, position_y = 0, position_z = 1, robotParameter = 0):
         self.name = name
         self.position = np.array([position_x, position_y, position_z])
-        self.taskAssigned = task()#initializes to a blank task
+        self.taskAssigned = task() #initializes to a blank task
         self.taskRank = 0
         self.robotParameter = robotParameter
 
@@ -32,8 +29,6 @@ class robotInfo:
     def setPosition(self, position):
         self.position = position
 
-
-
 class task:
     def __init__(self, name = 'not assigned', position_x = 0, position_y = 0, position_z = 0, robotParameter = 0, taskLength = 0):
         self.name = name
@@ -42,36 +37,24 @@ class task:
         self.taskLength = taskLength
 	
 
-
-crazyflieInfo = [robotInfo() for i in range(0,5)]
-
-boundaryLength = 10 #The size of the sides of the area for the tasks
+crazyflieInfo = [robotInfo() for i in range(0,5)] #vector of CrazyflieInfo data members
+boundaryLength = 10 #the size of the task area
 maxDistance = sqrt(2*boundaryLength*boundaryLength) #max possible distance away a drone could be
 
 def mrta_rank(taskToRank):
     # input: position of task class object, position of 5 crazyflies
-    # output: rank [rank1, rank2, rank3, rank4, rank5]
-
-    # assuming task_position is given as np.array(x,y,z)
-    # assuming crazyflie_position is given as np.array(self.pose.x,self.pose.y,self.pose.z)
-
-    #goes through and ranks drones based on certain characteristics of drones
+    # output: rank vector: [rank1, rank2, rank3, rank4, rank5]
 
     dist = [0,0,0,0,0]
     rankDist = [0,0,0,0,0]
     rankParam = [0,0,0,0,0]
     rankDoingNothing = [0,0,0,0,0]
 
-    for x in range (0,5):
-        #finds the distance of all drones to the task
-        #ranks distances based on the max possible distance
+    for x in range (0,5): #computes the distance of all drones to tasks and ranks
 
-        pose = (crazyflieInfo[x].position) # must change this later for multiple drones
+        pose = (crazyflieInfo[x].position)
         goal = (taskToRank.position)
-        #print(pose)
-        #print(goal)
-
-        dist[x] = np.sum((pose-taskToRank.position)**2, axis = 0)**(1/2)
+        dist[x] = sqrt(np.sum((pose-taskToRank.position)**2, axis = 0))
         rankDist[x] = 1 - dist[x]/maxDistance
 
         #higher rank for task if parameters match for the task
@@ -95,17 +78,11 @@ def mrta_rank(taskToRank):
     overallRank3 = numRankingFactors - rankDist[3] + rankParam[3] + rankDoingNothing[3]
     overallRank4 = numRankingFactors - rankDist[4] + rankParam[4] + rankDoingNothing[4]
 
-    # also can consider the crazyflie's specific reward associated with the task
-    # reward_vector = [reward1, .... rewardn] (0 - 1)
-    #pre_rank = reward*dist #element-wise multiplication
-
-    # https://docs.scipy.org/doc/numpy-1.14.0/reference/generated/numpy.sort.html
     dtype = [('drone','S10'), ('distance', float), ('rankValue',float)]
     drones = [('alpha', dist[0], overallRank0), ('beta',dist[1], overallRank1), ('charlie',dist[2], overallRank2), ('delta',dist[3], overallRank3), ('echo',dist[4], overallRank4)]
     pre_ranked = np.array(drones, dtype=dtype)
 
-    rank = np.sort(pre_ranked, order='rankValue')
-
+    rank = np.sort(pre_ranked, order='rankValue') #highest rank is rank1 or rank[0]
     return rank
 
 
@@ -113,21 +90,18 @@ def task_alloc(rank,taskToAlloc):
     #input: rank vector each crazyflie, task to allocate class object
     #output: assigns task name to taskAssigned of robot to do task
 
-    #unsure what will happen if we try to assign too many tasks at one time
-
-    #see if first ranked drone is free, and assign task if so
-    #print("start assignment")
-    #print(rank)
-    for x in range (0,5):
+    print("start assignment")
+    print(rank) 
+    for x in range (0,5):  #check if first ranked drone is free, and assigns task
         for y in range (0,5):
-            print(crazyflieInfo[y].name)
-            print(rank[x][0])
+            #print(crazyflieInfo[y].name)
+            #print(rank[x][0])
             if(crazyflieInfo[y].name == rank[x][0]):
                 #print("found drone name")
                 if(crazyflieInfo[y].taskAssigned.name == 'not assigned'):
                     crazyflieInfo[y].assignTask(taskToAlloc, rank[x][2])
-                    #print(taskToAlloc.name)
-                    #print("task assigned successfully")
+                    print(taskToAlloc.name)
+                    print("task assigned successfully")
                     return
                 else: #if the drones current task has a rank value of 1 less than the new task, it switches tasks ----- switching policy here
                     if(crazyflieInfo[y].taskRank + 1 < rank[x][2]):
@@ -142,8 +116,6 @@ def task_alloc(rank,taskToAlloc):
 def domino_assign(taskToAlloc):
     #input: task to allocate class object
     #output: assigns task name to taskAssigned of robot to do task
-
-    #must make sure there are not more tasks being assigned than drones available
 
     #goes through drones in order until a drone is found to do the task
     for x in range (0,5):
