@@ -90,8 +90,8 @@ def task_alloc(rank,taskToAlloc):
     #input: rank vector each crazyflie, task to allocate class object
     #output: assigns task name to taskAssigned of robot to do task
 
-    print("start assignment")
-    print(rank) 
+    #print("start assignment")
+    #print(rank) 
     for x in range (0,5):  #check if first ranked drone is free, and assigns task
         for y in range (0,5):
             #print(crazyflieInfo[y].name)
@@ -100,8 +100,8 @@ def task_alloc(rank,taskToAlloc):
                 #print("found drone name")
                 if(crazyflieInfo[y].taskAssigned.name == 'not assigned'):
                     crazyflieInfo[y].assignTask(taskToAlloc, rank[x][2])
-                    print(taskToAlloc.name)
-                    print("task assigned successfully")
+                    #print(taskToAlloc.name)
+                    #print("task assigned successfully")
                     return
                 else: #if the drones current task has a rank value of 1 less than the new task, it switches tasks ----- switching policy here
                     if(crazyflieInfo[y].taskRank + 1 < rank[x][2]):

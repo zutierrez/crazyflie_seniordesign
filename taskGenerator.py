@@ -44,17 +44,12 @@ def init_task_generator():
             tasksAssigned[x] = random_task(seed, numTasksAssigned)
             numTasksAssigned = numTasksAssigned + 1
 
-def new_task_generator():
+def new_task_generator(numTasksAssigned):
     #input: none
     #output: the new task assigned to the drone
 
     #assigns a new task to the list of tasks once a task is complete
-
-    if(numTasksAssigned == 11):
-	    taskToAssign = goHome
-    else:
-        taskToAssign = random_task(seed, numTasksAssigned)
-        numTasksAssigned = numTasksAssigned + 1
+    taskToAssign = random_task(seed, numTasksAssigned)
 
     return taskToAssign
 
@@ -67,8 +62,12 @@ def random_task(seed, numTasksAssigned):
         assignOrder = [0, 10, 1, 9, 2, 8, 3, 7, 4, 6, 5]
     elif(numTasksAssigned == 0):
         assignOrder = random.sample(range(11),11)
-        
-    nextTask = possibleTasks[numTasksAssigned]
+    if(numTasksAssigned<11):
+        print(numTasksAssigned)
+        nextTask = possibleTasks[numTasksAssigned]
+    else:    
+        nextTask = goHome
+
     return nextTask
     
     

@@ -6,6 +6,10 @@ import numpy as np
 import taskGenerator as taskg
 import allocTask as taskk
 
+from multiprocessing import Process
+
+import time
+
 import mav_msgs
 import tf
 import rospy
@@ -53,6 +57,7 @@ class Crazyflie():
         self.pose5 = Point()
         self.odom_sub5 = rospy.Subscriber("crazyflie2_5/odometry", Odometry, self.odom_callback5)
         
+        self.numTasksAssigned = 0
         taskg.init_task_generator() # generates tasks for ranking
         self.start_drone_info() # initializes name, position, parameter
         self.start_assignment() # 
@@ -61,65 +66,87 @@ class Crazyflie():
         self.print_drone_locations()
         
         # ------------------------- insert task allocation + ranking -------------------
-        self.taskUpdateFunct()
+        #self.taskUpdateFunct()
 
         # figure out who gets a task
         # whoever gets it, we call their run function
         #--------------------------------------------------------------------------------
 
-        try:
+        #drone1Proc = Process(target = self.drone_one_go)
+        #drone2Proc = Process(target = self.drone_two_go)
+        #drone3Proc = Process(target = self.drone_three_go)
+        #drone4Proc = Process(target = self.drone_four_go)
+        #drone5Proc = Process(target = self.drone_five_go)
+        
+
+        while(1):
             self.drone_one_go()
             self.drone_two_go()
             self.drone_three_go()
             self.drone_four_go()
             self.drone_five_go()
+            
+
+            #drone1Proc.start()
+            #drone2Proc.start()
+            #drone3Proc.start()
+            #drone4Proc.start()
+            #drone5Proc.start()
+
+            #drone1Proc = Process(target = self.drone_one_go)
+            #drone2Proc = Process(target = self.drone_two_go)
+            #drone3Proc = Process(target = self.drone_three_go)
+            #drone4Proc = Process(target = self.drone_four_go)
+            #drone5Proc = Process(target = self.drone_five_go)
+
 
             print("end locations")
             self.print_drone_locations()
-        except rospy.ROSInterruptException:
-            rospy.loginfo("Action terminated.")
-        finally:
-            pass
+        #except rospy.ROSInterruptException:
+        #    rospy.loginfo("Action terminated.")
+        #finally:
+        #    pass
 
     
     def taskUpdateFunct(self):
-        #function generates and assigns new task to drone
-
-        while(1):
+        #function generates and assigns new task todef drone1proc:
+ 
+        #while(1):
             for x in range(0,5):
                 if(taskg.tasksAssigned[x].name == 'not assigned'):
-                    taskg.tasksAssigned[x] = taskg.new_task_generator()
+                    taskg.tasksAssigned[x] = taskg.new_task_generator(self.numTasksAssigned)
                     taskk.task_alloc(taskk.mrta_rank(taskg.tasksAssigned[x]),taskg.tasksAssigned[x])
+                    self.numTasksAssigned=self.numTasksAssigned+1
                 self.check_pose()
 
 
     def print_drone_locations(self):
-        print(taskk.crazyflieInfo[0].position)
-        print(taskk.crazyflieInfo[1].position)
-        print(taskk.crazyflieInfo[2].position)
-        print(taskk.crazyflieInfo[3].position)
-        print(taskk.crazyflieInfo[4].position)
 
         print(taskk.crazyflieInfo[0].name)
+        print(taskk.crazyflieInfo[0].position)
         print(taskk.crazyflieInfo[0].taskAssigned.name)
+        print(taskk.crazyflieInfo[0].taskAssigned.position)
 
         print(taskk.crazyflieInfo[1].name)
+        print(taskk.crazyflieInfo[1].position)
         print(taskk.crazyflieInfo[1].taskAssigned.name)
+        print(taskk.crazyflieInfo[1].taskAssigned.position)
 
         print(taskk.crazyflieInfo[2].name)
+        print(taskk.crazyflieInfo[2].position)
         print(taskk.crazyflieInfo[2].taskAssigned.name)
+        print(taskk.crazyflieInfo[2].taskAssigned.position)
 
         print(taskk.crazyflieInfo[3].name)
+        print(taskk.crazyflieInfo[3].position)
         print(taskk.crazyflieInfo[3].taskAssigned.name)
+        print(taskk.crazyflieInfo[3].taskAssigned.position)
 
         print(taskk.crazyflieInfo[4].name)
+        print(taskk.crazyflieInfo[4].position)
         print(taskk.crazyflieInfo[4].taskAssigned.name)
-
-        print(taskk.crazyflieInfo[0].taskAssigned.position)
-        print(taskk.crazyflieInfo[1].taskAssigned.position)
-        print(taskk.crazyflieInfo[2].taskAssigned.position)
-        print(taskk.crazyflieInfo[3].taskAssigned.position)
         print(taskk.crazyflieInfo[4].taskAssigned.position)
+
         
 
 
@@ -130,7 +157,13 @@ class Crazyflie():
         self.run1(waypoint)
         
         #need to wait until drone reaches location
+        #while()
         taskk.crazyflieInfo[0].updatePosition()
+
+        time.sleep(60)
+
+        waypoint = [np.array([0,0,1]),np.array([0,0,1])]
+        self.run1(waypoint)
 
         #wait for drone to finish task (duration of task)
 
@@ -139,6 +172,10 @@ class Crazyflie():
             if(taskg.tasksAssigned[x].name == taskk.crazyflieInfo[0].taskAssigned.name):
                 taskg.tasksAssigned[x] = taskk.task()
                 taskk.crazyflieInfo[0].taskComplete()
+
+        self.taskUpdateFunct()
+
+        return 0
 
     def drone_two_go(self):
         #sends drone 1 to its next location and updates information after reaching location
@@ -149,6 +186,10 @@ class Crazyflie():
         #need to wait until drone reaches location
         taskk.crazyflieInfo[1].updatePosition()
 
+        time.sleep(60)
+
+        waypoint = [np.array([0,0,1]),np.array([0,0,1])]
+        self.run2(waypoint)
         #wait for drone to finish task (duration of task)
 
         #unassigns the task from the tasksAssigned array and from the drone
@@ -156,6 +197,10 @@ class Crazyflie():
             if(taskg.tasksAssigned[x].name == taskk.crazyflieInfo[1].taskAssigned.name):
                 taskg.tasksAssigned[x] = taskk.task()
                 taskk.crazyflieInfo[1].taskComplete()
+        
+        self.taskUpdateFunct()
+
+        return 0
 
     def drone_three_go(self):
         #sends drone 3 to its next location and updates information after reaching location
@@ -166,6 +211,10 @@ class Crazyflie():
         #need to wait until drone reaches location
         taskk.crazyflieInfo[2].updatePosition()
 
+        time.sleep(60)
+
+        waypoint = [np.array([0,0,1]),np.array([0,0,1])]
+        self.run3(waypoint)
         #wait for drone to finish task (duration of task)
 
         #unassigns the task from the tasksAssigned array and from the drone
@@ -173,6 +222,10 @@ class Crazyflie():
             if(taskg.tasksAssigned[x].name == taskk.crazyflieInfo[2].taskAssigned.name):
                 taskg.tasksAssigned[x] = taskk.task()
                 taskk.crazyflieInfo[2].taskComplete()
+
+        self.taskUpdateFunct()
+
+        return 0
 
     def drone_four_go(self):
         #sends drone 4 to its next location and updates information after reaching location
@@ -183,6 +236,10 @@ class Crazyflie():
         #need to wait until drone reaches location
         taskk.crazyflieInfo[3].updatePosition()
 
+        time.sleep(60)
+
+        waypoint = [np.array([0,0,1]),np.array([0,0,1])]
+        self.run4(waypoint)
         #wait for drone to finish task (duration of task)
 
         #unassigns the task from the tasksAssigned array and from the drone
@@ -190,6 +247,10 @@ class Crazyflie():
             if(taskg.tasksAssigned[x].name == taskk.crazyflieInfo[3].taskAssigned.name):
                 taskg.tasksAssigned[x] = taskk.task()
                 taskk.crazyflieInfo[3].taskComplete()
+        
+        self.taskUpdateFunct()
+
+        return 0
 
     def drone_five_go(self):
         #sends drone 5 to its next location and updates information after reaching location
@@ -199,6 +260,10 @@ class Crazyflie():
         #need to wait until drone reaches location
         taskk.crazyflieInfo[4].updatePosition()
 
+        time.sleep(60)
+
+        waypoint = [np.array([0,0,1]),np.array([0,0,1])]
+        self.run5(waypoint)
         #wait for drone to finish task (duration of task)
 
         #unassigns the task from the tasksAssigned array and from the drone
@@ -206,6 +271,10 @@ class Crazyflie():
             if(taskg.tasksAssigned[x].name == taskk.crazyflieInfo[4].taskAssigned.name):
                 taskg.tasksAssigned[x] = taskk.task()
                 taskk.crazyflieInfo[4].taskComplete()
+
+        self.taskUpdateFunct()
+
+        return 0
 
 
     def midpoint(self, currentLocation, finalLocation):
@@ -243,6 +312,7 @@ class Crazyflie():
         #assigns the tasks to drones for first five tasks at initialization
         for x in range(0,5):
             taskk.task_alloc(taskk.mrta_rank(taskg.tasksAssigned[x]), taskg.tasksAssigned[x])
+            self.numTasksAssigned=self.numTasksAssigned+1
 
 
     def run1(self, waypoints): 
